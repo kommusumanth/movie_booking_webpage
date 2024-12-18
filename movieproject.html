@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Booking App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        .seat {
+            margin: 5px;
+            padding: 10px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .seat.selected {
+            background-color: #FFC107;  /* Yellow for selected seats */
+        }
+        .seat.booked {
+            background-color: #f44336;  /* Red for booked seats */
+            cursor: not-allowed;
+        }
+        .seat:hover {
+            opacity: 0.7;
+        }
+        .row {
+            display: flex;
+            justify-content: center;
+        }
+        #payment {
+            display: none;
+            margin-top: 20px;
+        }
+        .price {
+            font-size: 18px;
+            color: green;
+        }
+        .heading {
+            font-size: 24px;
+            margin-top: 20px;
+            color: #333;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        #movies, #screens {
+            display: none;
+            margin-top: 20px;
+        }
+        #backButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #backButton:hover {
+            background-color: #005f73;
+        }
+    </style>
+</head>
+<body>
+    <h1>Movie Booking App</h1>
+    
+    <h2>Select a Movie:</h2>
+    <button onclick="showMovies()">Select Movie</button>
+
+    <div id="movies">
+        <h3>Select a Movie:</h3>
+        <button onclick="showScreens('Pushpa')">Pushpa</button>
+        <button onclick="showScreens('Salar')">Salar</button>
+        <button onclick="showScreens('Kalki')">Kalki</button>
+        <button onclick="showScreens('Animal')">Animal</button>
+    </div>
+
+    <div id="screens" style="display:none;">
+        <h3>Select a Screen:</h3>
+        <button onclick="viewSeats(1)">Screen 1</button>
+        <button onclick="viewSeats(2)">Screen 2</button>
+        <button onclick="viewSeats(3)">Screen 3</button>
+        <button onclick="viewSeats(4)">Screen 4</button>
+    </div>
+
+    <div id="seats" style="display:none;">
+        <div class="section">
+            <h3 class="heading">Premium (₹200)</h3>
+            <div id="topRow"></div>
+        </div>
+
+        <div class="section">
+            <h3 class="heading">First Class (₹150)</h3>
+            <div id="middleRow"></div>
+        </div>
+
+        <div class="section">
+            <h3 class="heading">Second Class (₹100)</h3>
+            <div id="bottomRow"></div>
+        </div>
+
+        <div id="payment">
+            <h3>Payment Information</h3>
+            <div id="totalPrice" class="price"></div>
+            <button onclick="makePayment()">Pay Now</button>
+        </div>
+
+        <button id="backButton" onclick="goBack()">Back</button>
+    </div>
+
+    <script>
+        const seatPrices = {
+            premium: 200,
+            firstClass: 150,
+            secondClass: 100
+        };
+
+        let selectedSeats = [];
+        let selectedMovie = '';
+        let selectedScreen = '';
+        let bookedSeats = new Set(); // To keep track of booked seats
+
+        function showMovies() {
+            document.getElementById('movies').style.display = 'block';
+        }
+
+        function showScreens(movie) {
+            selectedMovie = movie;
+            document.getElementById('movies').style.display = 'none';
+            document.getElementById('screens').style.display = 'block';
+        }
+
+        function viewSeats(screen) {
+            selectedScreen = screen;
+            document.getElementById('screens').style.display = 'none';
+            document.getElementById('seats').style.display = 'block';
+
+            const topRow = document.getElementById('topRow');
+            topRow.innerHTML = '';  // Clear any previous seat layout
+
+            // Display Top Row (10 seats - Premium)
+            for (let i = 1; i <= 10; i++) {
+                let seat = createSeatButton(i, 'premium');
+                topRow.appendChild(seat);
+            }
+
+            const middleRow = document.getElementById('middleRow');
+            middleRow.innerHTML = '';  // Clear any previous seat layout
+
+            // Display Middle Row (80 seats - First Class)
+            for (let i = 11; i <= 90; i++) {
+                let seat = createSeatButton(i, 'firstClass');
+                middleRow.appendChild(seat);
+            }
+
+            const bottomRow = document.getElementById('bottomRow');
+            bottomRow.innerHTML = '';  // Clear any previous seat layout
+
+            // Display Bottom Row (10 seats - Second Class)
+            for (let i = 91; i <= 100; i++) {
+                let seat = createSeatButton(i, 'secondClass');
+                bottomRow.appendChild(seat);
+            }
+
+            // Disable already booked seats
+            disableBookedSeats();
+        }
+
+        function createSeatButton(seatNumber, category) {
+            const seatButton = document.createElement('button');
+            seatButton.classList.add('seat');
+            seatButton.textContent = seatNumber;
+            seatButton.dataset.category = category;
+            seatButton.dataset.seatNumber = seatNumber;
+            seatButton.onclick = () => selectSeat(seatButton, seatNumber, category);
+            return seatButton;
+        }
+
+        function selectSeat(seatButton, seatNumber, category) {
+            // Disable booked seats
+            if (bookedSeats.has(seatNumber)) {
+                return;
+            }
+
+            // Toggle selected seat state
+            if (seatButton.classList.contains('selected')) {
+                selectedSeats = selectedSeats.filter(seat => seat !== seatNumber);
+                seatButton.classList.remove('selected');
+            } else {
+                selectedSeats.push(seatNumber);
+                seatButton.classList.add('selected');
+            }
+
+            updateTotalPrice();
+        }
+
+        function updateTotalPrice() {
+            let totalPrice = 0;
+            selectedSeats.forEach(seatNumber => {
+                const seatButton = document.querySelector(`[data-seat-number="${seatNumber}"]`);
+                const category = seatButton.dataset.category;
+                totalPrice += seatPrices[category];
+            });
+
+            document.getElementById('totalPrice').textContent = `Total: ₹${totalPrice}`;
+            document.getElementById('payment').style.display = selectedSeats.length > 0 ? 'block' : 'none';
+        }
+
+        function makePayment() {
+            if (selectedSeats.length === 0) {
+                alert("Please select at least one seat.");
+                return;
+            }
+
+            const totalPrice = selectedSeats.reduce((total, seatNumber) => {
+                const seatButton = document.querySelector(`[data-seat-number="${seatNumber}"]`);
+                const category = seatButton.dataset.category;
+                return total + seatPrices[category];
+            }, 0);
+
+            alert(`Payment of ₹${totalPrice} successful! Your seats are now booked.`);
+
+            // Mark seats as booked after payment
+            selectedSeats.forEach(seatNumber => {
+                const seatButton = document.querySelector(`[data-seat-number="${seatNumber}"]`);
+                seatButton.classList.add('booked');
+                seatButton.classList.remove('selected');  // Remove "selected" state
+                bookedSeats.add(seatNumber);  // Add to booked seats set
+            });
+
+            // Reset the booking process after payment
+            resetBooking();
+        }
+
+        function resetBooking() {
+            selectedSeats = [];
+            updateTotalPrice();
+
+            const seatButtons = document.querySelectorAll('.seat');
+            seatButtons.forEach(button => {
+                button.classList.remove('selected');
+            });
+
+            document.getElementById('seats').style.display = 'none';
+        }
+
+        function disableBookedSeats() {
+            const seatButtons = document.querySelectorAll('.seat');
+            seatButtons.forEach(button => {
+                const seatNumber = button.dataset.seatNumber;
+                if (bookedSeats.has(seatNumber)) {
+                    button.classList.add('booked');
+                    button.disabled = true;  // Disable already booked seats
+                }
+            });
+        }
+
+        function goBack() {
+            document.getElementById('seats').style.display = 'none';
+            document.getElementById('screens').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
